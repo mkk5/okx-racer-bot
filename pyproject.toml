@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "okx-racer-bot"
+version = "0.1.0"
+description = "OKX Racer automation"
+authors = ["Denys Vasylyshyn <denys.mkk@gmail.com>"]
+repository = "https://github.com/mkk5/okx-racer-bot"
+readme = "README.md"
+license = "MIT"
+package-mode = false
+
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyautogui = "^0.9.54"
+easyocr = "^1.7.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
