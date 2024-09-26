@@ -30,16 +30,12 @@ def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fue
         choice = "img/okx-ui/moon.png"  # TODO: AI predictions, if so - edit price comparison (line 44)
         x, y = pyautogui.locateCenterOnScreen(image=choice, confidence=0.9, region=okx_window)
 
-        opening_price_image = np.array(pyautogui.screenshot(region=before_price_window))
-        opening_price_str = ocr.recognize(opening_price_image, allowlist='0123456789,.')[0][1]
-        opening_price = price_to_float(opening_price_str)
+        opening_price = get_price(before_price_window, ocr)
 
         pyautogui.click(x, y)
         time.sleep(4.75)
 
-        current_price_image = np.array(pyautogui.screenshot(region=realtime_price_window))
-        current_price_str = ocr.recognize(current_price_image, allowlist='0123456789,.')[0][1]
-        current_price = price_to_float(current_price_str)
+        current_price = get_price(realtime_price_window, ocr)
 
         if current_price < opening_price:
             for button in "tasks.png", "race.png":
@@ -58,8 +54,10 @@ def close_game():
         pyautogui.click(x, y)
 
 
-def price_to_float(price_string: str) -> float:
-    return float(price_string.replace(',', ''))
+def get_price(region: tuple[int, int, int, int], ocr: easyocr.Reader) -> float:
+    price_image = np.array(pyautogui.screenshot(region=region))
+    price_str = ocr.recognize(price_image, allowlist='0123456789,.')[0][1]
+    return float(price_str.replace(',', ''))
 
 
 def main():
