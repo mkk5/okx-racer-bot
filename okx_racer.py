@@ -22,8 +22,8 @@ def open_game() -> tuple[int, int, int, int]:
 
 
 def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fuel_cycles: int) -> None:
-    before_price_window = (okx_window[0]+110, okx_window[1]+230, okx_window[2]-200, okx_window[3]-530)
-    realtime_price_window = (okx_window[0]+196, okx_window[1]+191, okx_window[2]-310, okx_window[3]-561)
+    before_price_window = (okx_window[0]+110, okx_window[1]+215, okx_window[2]-200, okx_window[3]-530)
+    realtime_price_window = (okx_window[0]+198, okx_window[1]+175, okx_window[2]-310, okx_window[3]-560)
 
     i = 1
     while i < fuel_cycles:
