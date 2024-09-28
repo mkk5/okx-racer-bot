@@ -9,14 +9,10 @@ type Region = tuple[int, int, int, int]
 
 def open_game() -> Region:
     for button in "telegram.png", "okx_chat.png", "play.png":
-        x, y = pyautogui.locateCenterOnScreen(image=f"img/open-buttons/{button}", confidence=0.95)
-        pyautogui.click(x, y)
-        time.sleep(0.5)
+        click_and_sleep(f"img/open-buttons/{button}", sleep_time=0.5)
     time.sleep(2)
     try:
-        x, y = pyautogui.locateCenterOnScreen(image="img/okx-ui/continue_button.png", confidence=0.95)
-        pyautogui.click(x, y)
-        time.sleep(0.5)
+        click_and_sleep("img/okx-ui/continue_button.png", sleep_time=0.5)
     except pyautogui.ImageNotFoundException:
         pass
     finally:
@@ -32,20 +28,14 @@ def click_button(okx_window: Region, ocr: easyocr.Reader, fuel_cycles: int) -> N
     i = 1
     while i < fuel_cycles:
         choice = "img/okx-ui/moon.png"  # TODO: AI predictions, if so - edit price comparison (line 44)
-        x, y = pyautogui.locateCenterOnScreen(image=choice, confidence=0.9, region=okx_window)
 
         opening_price = get_price(before_price_window, ocr)
-
-        pyautogui.click(x, y)
-        time.sleep(4.75)
-
+        click_and_sleep(image=choice, region=okx_window, sleep_time=4.75)
         current_price = get_price(realtime_price_window, ocr)
 
         if current_price < opening_price:
             for button in "tasks.png", "race.png":
-                x, y = pyautogui.locateCenterOnScreen(image=f"img/okx-ui/{button}", confidence=0.95, region=okx_window)
-                pyautogui.click(x, y)
-                time.sleep(0.1)
+                click_and_sleep(f"img/okx-ui/{button}", region=okx_window, sleep_time=0.1)
         else:
             time.sleep(3.1)
             i += 1
@@ -55,15 +45,18 @@ def click_button(okx_window: Region, ocr: easyocr.Reader, fuel_cycles: int) -> N
 def refill_fuel(okx_window: Region) -> None:
     print(f"{time.strftime('%H:%M:%S')} started refilling")
     for button in "tasks.png", "refill.png", "refill_confirm.png", "race.png":
-        x, y = pyautogui.locateCenterOnScreen(image=f"img/okx-ui/{button}", confidence=0.95, region=okx_window)
-        pyautogui.click(x, y)
-        time.sleep(0.8)
+        click_and_sleep(f"img/okx-ui/{button}", region=okx_window, sleep_time=0.8)
 
 
 def close_game() -> None:
     for button in "okx_close.png", "telegram_close.png":
-        x, y = pyautogui.locateCenterOnScreen(image=f"img/close-buttons/{button}", confidence=0.95)
-        pyautogui.click(x, y)
+        click_and_sleep(f"img/close-buttons/{button}")
+
+
+def click_and_sleep(image: str, region: Region | None = None, confidence: float = 0.95, sleep_time: float = 0) -> None:
+    x, y = pyautogui.locateCenterOnScreen(image=image, region=region, confidence=confidence)
+    pyautogui.click(x, y)
+    time.sleep(sleep_time)
 
 
 def get_price(region: Region, ocr: easyocr.Reader) -> float:
