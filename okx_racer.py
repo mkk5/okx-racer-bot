@@ -22,6 +22,7 @@ def open_game() -> tuple[int, int, int, int]:
 
 
 def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fuel_cycles: int) -> None:
+    print(f"{time.strftime('%H:%M:%S')} started clicking cycle")
     before_price_window = (okx_window[0]+110, okx_window[1]+215, okx_window[2]-200, okx_window[3]-530)
     realtime_price_window = (okx_window[0]+198, okx_window[1]+175, okx_window[2]-310, okx_window[3]-560)
 
@@ -48,7 +49,15 @@ def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fue
     time.sleep(0.5)
 
 
-def close_game():
+def refill_fuel(okx_window: tuple[int, int, int, int]) -> None:
+    print(f"{time.strftime('%H:%M:%S')} started refilling")
+    for button in "tasks.png", "refill.png", "refill_confirm.png", "race.png":
+        x, y = pyautogui.locateCenterOnScreen(image=f"img/okx-ui/{button}", confidence=0.95, region=okx_window)
+        pyautogui.click(x, y)
+        time.sleep(0.8)
+
+
+def close_game() -> None:
     for button in "okx_close.png", "telegram_close.png":
         x, y = pyautogui.locateCenterOnScreen(image=f"img/close-buttons/{button}", confidence=0.95)
         pyautogui.click(x, y)
@@ -60,24 +69,17 @@ def get_price(region: tuple[int, int, int, int], ocr: easyocr.Reader) -> float:
     return float(price_str.replace(',', ''))
 
 
-def main():
+def main() -> None:
     ocr = easyocr.Reader(['en'])
     fuel = 30
+    refill_available = 3
 
-    refill_cycle = 1
-    while True:
-        print(f"{time.strftime('%H:%M:%S')} starting cycle {refill_cycle}")
-
-        okx_window = open_game()
-        pyautogui.screenshot(f"results/{refill_cycle}open.png", region=okx_window)
-
+    okx_window = open_game()
+    click_button(okx_window, ocr, fuel)
+    for i in range(refill_available):
+        refill_fuel(okx_window)
         click_button(okx_window, ocr, fuel)
-
-        pyautogui.screenshot(f"results/{refill_cycle}quit.png", region=okx_window)
-        close_game()
-
-        time.sleep(2520)
-        refill_cycle += 1
+    close_game()
 
 
 if __name__ == '__main__':
