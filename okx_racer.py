@@ -4,7 +4,10 @@ import easyocr
 import numpy as np
 
 
-def open_game() -> tuple[int, int, int, int]:
+type Region = tuple[int, int, int, int]
+
+
+def open_game() -> Region:
     for button in "telegram.png", "okx_chat.png", "play.png":
         x, y = pyautogui.locateCenterOnScreen(image=f"img/open-buttons/{button}", confidence=0.95)
         pyautogui.click(x, y)
@@ -21,7 +24,7 @@ def open_game() -> tuple[int, int, int, int]:
         return okx_window[0].item(), okx_window[1].item(), okx_window[2], okx_window[3]
 
 
-def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fuel_cycles: int) -> None:
+def click_button(okx_window: Region, ocr: easyocr.Reader, fuel_cycles: int) -> None:
     print(f"{time.strftime('%H:%M:%S')} started clicking cycle")
     before_price_window = (okx_window[0]+110, okx_window[1]+215, okx_window[2]-200, okx_window[3]-530)
     realtime_price_window = (okx_window[0]+198, okx_window[1]+175, okx_window[2]-310, okx_window[3]-560)
@@ -49,7 +52,7 @@ def click_button(okx_window: tuple[int, int, int, int], ocr: easyocr.Reader, fue
     time.sleep(0.5)
 
 
-def refill_fuel(okx_window: tuple[int, int, int, int]) -> None:
+def refill_fuel(okx_window: Region) -> None:
     print(f"{time.strftime('%H:%M:%S')} started refilling")
     for button in "tasks.png", "refill.png", "refill_confirm.png", "race.png":
         x, y = pyautogui.locateCenterOnScreen(image=f"img/okx-ui/{button}", confidence=0.95, region=okx_window)
@@ -63,7 +66,7 @@ def close_game() -> None:
         pyautogui.click(x, y)
 
 
-def get_price(region: tuple[int, int, int, int], ocr: easyocr.Reader) -> float:
+def get_price(region: Region, ocr: easyocr.Reader) -> float:
     price_image = np.array(pyautogui.screenshot(region=region))
     price_str = ocr.recognize(price_image, allowlist='0123456789,.')[0][1]
     return float(price_str.replace(',', ''))
