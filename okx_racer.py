@@ -1,82 +1,72 @@
-import pyautogui
-import time
-import easyocr
-import numpy as np
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "playwright",
+# ]
+# ///
+from playwright.sync_api import sync_playwright, Route, Page, Playwright
+import json
+from bisect import bisect
+from operator import itemgetter
 
+PRICE_DATA: list[dict] = []
 
-type Region = tuple[int, int, int, int]
+def framereceived_handler(payload: str) -> None:
+    """Collect websocket price data"""
+    payload = json.loads(payload)
+    if payload.get("event") is None:
+        payload_data = payload["data"][0]
+        price_and_timestamp = {
+            "last": float(payload_data["last"]),
+            "ts": int(payload_data["ts"])
+        }
+        PRICE_DATA.append(price_and_timestamp)
 
+def assess_router(route: Route) -> None:
+    """Modify main request based on collected websocket data"""
+    present_ts = int(route.request.url[-13:])
+    past_ts = present_ts - (5 * 1000)
+    past_index = bisect(PRICE_DATA, past_ts, key=itemgetter("ts"))
+    past_price = PRICE_DATA[past_index]["last"]
+    present_price = PRICE_DATA[-1]["last"]
+    # post_data = '{"predict":1}' if present_price >= past_price else '{"predict":0}'
+    # route.continue_(post_data=post_data)
+    route.continue_() if present_price >= past_price else route.abort()
+    del PRICE_DATA[:past_index]
 
-def open_game() -> Region:
-    for button in "telegram.png", "okx_chat.png", "play.png":
-        click_and_sleep(f"img/open-buttons/{button}", sleep_time=0.5)
-    time.sleep(2)
-    try:
-        click_and_sleep("img/okx-ui/continue_button.png", sleep_time=0.5)
-    except pyautogui.ImageNotFoundException:
-        pass
-    finally:
-        okx_window = pyautogui.locateOnScreen(image="img/okx-ui/okx_window.png", confidence=0.6)
-        return okx_window[0].item(), okx_window[1].item(), okx_window[2], okx_window[3]
+def setup_page(page: Page) -> None:
+    page.route("**/assess?t=*", assess_router)
+    page.on("websocket", lambda ws: ws.on("framereceived", framereceived_handler))
+    page.reload()
 
+def use_fuel(page: Page) -> None:
+    moon_el = page.get_by_role("button", name="MOON")
+    fuel_el = page.get_by_text("/ 28")
+    while fuel_el.inner_text().split(' / ')[0] != '0':
+        moon_el.click()
+        page.wait_for_timeout(7500)
 
-def click_button(okx_window: Region, ocr: easyocr.Reader, fuel_cycles: int) -> None:
-    print(f"{time.strftime('%H:%M:%S')} started clicking cycle")
-    before_price_window = (okx_window[0]+110, okx_window[1]+215, okx_window[2]-200, okx_window[3]-530)
-    realtime_price_window = (okx_window[0]+198, okx_window[1]+175, okx_window[2]-310, okx_window[3]-560)
+def goto_reload_page(page: Page) -> None:
+    page.get_by_role("link", name="Upgrades").click()
+    page.get_by_text("Car", exact=True).click()
 
-    i = 1
-    while i < fuel_cycles:
-        choice = "img/okx-ui/moon.png"  # TODO: AI predictions, if so - edit price comparison (line 44)
+def reload_fuel(page: Page) -> None:
+    page.get_by_role("button", name="Reload Fuel Tank").click()
+    page.get_by_role("button", name="Boost Now").click()
+    page.get_by_label("Close").click()
+    page.go_back()
 
-        opening_price = get_price(before_price_window, ocr)
-        click_and_sleep(image=choice, region=okx_window, sleep_time=4.75)
-        current_price = get_price(realtime_price_window, ocr)
+def run(playwright: Playwright) -> None:
+    browser = playwright.chromium.connect_over_cdp("http://localhost:9222")
+    page = browser.contexts[0].pages[0]
+    setup_page(page)
+    while True:
+        use_fuel(page)
+        goto_reload_page(page)
+        if page.get_by_text("/3").inner_text()[0] == '0':
+            break
+        reload_fuel(page)
 
-        if current_price < opening_price:
-            for button in "tasks.png", "race.png":
-                click_and_sleep(f"img/okx-ui/{button}", region=okx_window, sleep_time=0.1)
-        else:
-            time.sleep(3.1)
-            i += 1
-    time.sleep(0.5)
-
-
-def refill_fuel(okx_window: Region) -> None:
-    print(f"{time.strftime('%H:%M:%S')} started refilling")
-    for button in "tasks.png", "refill.png", "refill_confirm.png", "race.png":
-        click_and_sleep(f"img/okx-ui/{button}", region=okx_window, sleep_time=0.8)
-
-
-def close_game() -> None:
-    for button in "okx_close.png", "telegram_close.png":
-        click_and_sleep(f"img/close-buttons/{button}")
-
-
-def click_and_sleep(image: str, region: Region | None = None, confidence: float = 0.95, sleep_time: float = 0) -> None:
-    x, y = pyautogui.locateCenterOnScreen(image=image, region=region, confidence=confidence)
-    pyautogui.click(x, y)
-    time.sleep(sleep_time)
-
-
-def get_price(region: Region, ocr: easyocr.Reader) -> float:
-    price_image = np.array(pyautogui.screenshot(region=region))
-    price_str = ocr.recognize(price_image, allowlist='0123456789,.')[0][1]
-    return float(price_str.replace(',', ''))
-
-
-def main() -> None:
-    ocr = easyocr.Reader(['en'])
-    fuel = 30
-    refill_available = 3
-
-    okx_window = open_game()
-    click_button(okx_window, ocr, fuel)
-    for i in range(refill_available):
-        refill_fuel(okx_window)
-        click_button(okx_window, ocr, fuel)
-    close_game()
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    with sync_playwright() as p:
+        run(p)
